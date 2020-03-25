@@ -4,13 +4,13 @@ from __future__ import print_function
 
 import argparse
 import torch
-import pickle 
-import numpy as np 
-import os 
-import math 
-import random 
+import pickle
+import numpy as np
+import os
+import math
+import random
 import sys
-import matplotlib.pyplot as plt 
+import matplotlib.pyplot as plt
 import data
 import scipy.io
 
@@ -28,6 +28,7 @@ parser.add_argument('--data_path', type=str, default='data/20ng', help='director
 parser.add_argument('--emb_path', type=str, default='data/20ng_embeddings.txt', help='directory containing word embeddings')
 parser.add_argument('--save_path', type=str, default='./results', help='path to save results')
 parser.add_argument('--batch_size', type=int, default=1000, help='input batch size for training')
+parser.add_argument('--write_neighbors', type=str, default="", help='path to output final topics')
 
 ### model-related arguments
 parser.add_argument('--num_topics', type=int, default=50, help='number of topics')
@@ -100,7 +101,7 @@ args.num_docs_test_2 = len(test_2_tokens)
 embeddings = None
 if not args.train_embeddings:
     emb_path = args.emb_path
-    vect_path = os.path.join(args.data_path.split('/')[0], 'embeddings.pkl')   
+    vect_path = os.path.join(args.data_path.split('/')[0], 'embeddings.pkl')
     vectors = {}
     with open(emb_path, 'rb') as f:
         for l in f:
@@ -112,7 +113,7 @@ if not args.train_embeddings:
     embeddings = np.zeros((vocab_size, args.emb_size))
     words_found = 0
     for i, word in enumerate(vocab):
-        try: 
+        try:
             embeddings[i] = vectors[word]
             words_found += 1
         except KeyError:
@@ -131,13 +132,13 @@ if not os.path.exists(args.save_path):
 if args.mode == 'eval':
     ckpt = args.load_from
 else:
-    ckpt = os.path.join(args.save_path, 
+    ckpt = os.path.join(args.save_path,
         'etm_{}_K_{}_Htheta_{}_Optim_{}_Clip_{}_ThetaAct_{}_Lr_{}_Bsz_{}_RhoSize_{}_trainEmbeddings_{}'.format(
-        args.dataset, args.num_topics, args.t_hidden_size, args.optimizer, args.clip, args.theta_act, 
+        args.dataset, args.num_topics, args.t_hidden_size, args.optimizer, args.clip, args.theta_act,
             args.lr, args.batch_size, args.rho_size, args.train_embeddings))
 
 ## define model and optimizer
-model = ETM(args.num_topics, vocab_size, args.t_hidden_size, args.rho_size, args.emb_size, 
+model = ETM(args.num_topics, vocab_size, args.t_hidden_size, args.rho_size, args.emb_size,
                 args.theta_act, embeddings, args.train_embeddings, args.enc_drop).to(device)
 
 print('model: {}'.format(model))
@@ -185,15 +186,15 @@ def train(epoch):
         cnt += 1
 
         if idx % args.log_interval == 0 and idx > 0:
-            cur_loss = round(acc_loss / cnt, 2) 
-            cur_kl_theta = round(acc_kl_theta_loss / cnt, 2) 
+            cur_loss = round(acc_loss / cnt, 2)
+            cur_kl_theta = round(acc_kl_theta_loss / cnt, 2)
             cur_real_loss = round(cur_loss + cur_kl_theta, 2)
 
             print('Epoch: {} .. batch: {}/{} .. LR: {} .. KL_theta: {} .. Rec_loss: {} .. NELBO: {}'.format(
                 epoch, idx, len(indices), optimizer.param_groups[0]['lr'], cur_kl_theta, cur_loss, cur_real_loss))
-    
-    cur_loss = round(acc_loss / cnt, 2) 
-    cur_kl_theta = round(acc_kl_theta_loss / cnt, 2) 
+
+    cur_loss = round(acc_loss / cnt, 2)
+    cur_kl_theta = round(acc_kl_theta_loss / cnt, 2)
     cur_real_loss = round(cur_loss + cur_kl_theta, 2)
     print('*'*100)
     print('Epoch----->{} .. LR: {} .. KL_theta: {} .. Rec_loss: {} .. NELBO: {}'.format(
@@ -206,12 +207,16 @@ def visualize(m, show_emb=True):
 
     m.eval()
 
-    queries = ['andrew', 'computer', 'sports', 'religion', 'man', 'love', 
-                'intelligence', 'money', 'politics', 'health', 'people', 'family']
-
+    #queries = ['andrew', 'computer', 'sports', 'religion', 'man', 'love',
+    #            'intelligence', 'money', 'politics', 'health', 'people', 'family']
+    queries = ["sentence", "punishment", "guilt", "murder", "vote", "woman", "man",
+               "innocent", "London", "crime", "female", "slave", "chattle", "foreigner",
+               "foreign",  "theft", "robbery", "rape", "thievery", "larceny",
+               "burglary", "assault", "hanging", "prison", "convict"]
     ## visualize topics using monte carlo
     with torch.no_grad():
         print('#'*100)
+
         print('Visualize topics...')
         topics_words = []
         gammas = m.get_beta()
@@ -232,9 +237,14 @@ def visualize(m, show_emb=True):
                 embeddings = m.rho         # Vocab_size x E
             neighbors = []
             for word in queries:
-                print('word: {} .. neighbors: {}'.format(
-                    word, nearest_neighbors(word, embeddings, vocab)))
+                try:
+                    print('word: {} .. neighbors: {}'.format(
+                        word, nearest_neighbors(word, embeddings, vocab)))
+                except ValueError:
+                    print( word + " not in queries. Skipping...", file=sys.stderr)
+                    continue
             print('#'*100)
+
 
 def evaluate(m, source, tc=False, td=False):
     """Compute perplexity on document completion.
@@ -245,7 +255,7 @@ def evaluate(m, source, tc=False, td=False):
             indices = torch.split(torch.tensor(range(args.num_docs_valid)), args.eval_batch_size)
             tokens = valid_tokens
             counts = valid_counts
-        else: 
+        else:
             indices = torch.split(torch.tensor(range(args.num_docs_test)), args.eval_batch_size)
             tokens = test_tokens
             counts = test_counts
@@ -273,7 +283,7 @@ def evaluate(m, source, tc=False, td=False):
             res = torch.mm(theta, beta)
             preds = torch.log(res)
             recon_loss = -(preds * data_batch_2).sum(1)
-            
+
             loss = recon_loss / sums_2.squeeze()
             loss = loss.mean().item()
             acc_loss += loss
@@ -294,7 +304,7 @@ def evaluate(m, source, tc=False, td=False):
         return ppl_dc
 
 if args.mode == 'train':
-    ## train model on data 
+    ## train model on data
     best_epoch = 0
     best_val_ppl = 1e9
     all_val_ppls = []
@@ -322,11 +332,16 @@ if args.mode == 'train':
         model = torch.load(f)
     model = model.to(device)
     val_ppl = evaluate(model, 'val')
-else:   
+    print("Best epoch:", best_epoch)
+
+else:
     with open(ckpt, 'rb') as f:
         model = torch.load(f)
     model = model.to(device)
     model.eval()
+
+    to_write = []
+    to_write.append("#"*100)
 
     with torch.no_grad():
         ## get document completion perplexities
@@ -353,8 +368,10 @@ else:
             if idx % 100 == 0 and idx > 0:
                 print('batch: {}/{}'.format(idx, len(indices)))
         thetaWeightedAvg = thetaWeightedAvg.squeeze().cpu().numpy() / cnt
-        print('\nThe 10 most used topics are {}'.format(thetaWeightedAvg.argsort()[::-1][:10]))
-
+        print_str = '\nThe 10 most used topics are {}'.format(thetaWeightedAvg.argsort()[::-1][:10])
+        print(print_str)
+        to_write.append(print_str)
+        to_write.append("\n" + "#"*100)
         ## show topics
         beta = model.get_beta()
         topic_indices = list(np.random.choice(args.num_topics, 10)) # 10 random topics
@@ -363,18 +380,38 @@ else:
             gamma = beta[k]
             top_words = list(gamma.cpu().numpy().argsort()[-args.num_words+1:][::-1])
             topic_words = [vocab[a] for a in top_words]
-            print('Topic {}: {}'.format(k, topic_words))
+            print_str = 'Topic {}: {}'.format(k, topic_words)
+            to_write.append(print_str)
+            print(print_str)
 
         if args.train_embeddings:
-            ## show etm embeddings 
+            to_write.append("\n\n" + "#"*100)
+
+            ## show etm embeddings
             try:
                 rho_etm = model.rho.weight.cpu()
             except:
                 rho_etm = model.rho.cpu()
-            queries = ['andrew', 'woman', 'computer', 'sports', 'religion', 'man', 'love', 
-                            'intelligence', 'money', 'politics', 'health', 'people', 'family']
+            #queries = ['andrew', 'woman', 'computer', 'sports', 'religion', 'man', 'love',
+            #                'intelligence', 'money', 'politics', 'health', 'people', 'family']
+            queries = ["sentence", "punishment", "guilt", "murder", "vote", "woman", "man",
+                       "innocent", "London", "crime", "female", "slave", "chattle", "foreigner",
+                       "foreign",  "theft", "robbery", "rape", "thievery", "larceny",
+                       "burglary", "assault", "hanging", "prison", "convict"]
             print('\n')
             print('ETM embeddings...')
             for word in queries:
-                print('word: {} .. etm neighbors: {}'.format(word, nearest_neighbors(word, rho_etm, vocab)))
+                try:
+                    print_str = 'word: {} .. etm neighbors: {}'.format(word, nearest_neighbors(word, rho_etm, vocab))
+                    print(print_str)
+                    to_write.append(print_str)
+                except ValueError:
+                    print_str = word + "not in queries. Skipping..."
+                    print(print_str, file=sys.stderr)
+                    to_write.append(print_str)
+                    continue
             print('\n')
+
+    if args.write_neighbors:
+        with open(args.write_neighbors, "w") as f:
+            f.write("\n".join(to_write))
