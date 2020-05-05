@@ -1,14 +1,14 @@
 import torch
-import torch.nn.functional as F 
-import numpy as np 
-import math 
+import torch.nn.functional as F
+import numpy as np
+import math
 
 from torch import nn
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class ETM(nn.Module):
-    def __init__(self, num_topics, vocab_size, t_hidden_size, rho_size, emsize, 
+    def __init__(self, num_topics, vocab_size, t_hidden_size, rho_size, emsize,
                     theta_act, embeddings=None, train_embeddings=True, enc_drop=0.5):
         super(ETM, self).__init__()
 
@@ -22,7 +22,7 @@ class ETM(nn.Module):
         self.t_drop = nn.Dropout(enc_drop)
 
         self.theta_act = self.get_activation(theta_act)
-        
+
         ## define the word embedding matrix \rho
         if train_embeddings:
             self.rho = nn.Linear(rho_size, vocab_size, bias=False)
@@ -33,10 +33,10 @@ class ETM(nn.Module):
 
         ## define the matrix containing the topic embeddings
         self.alphas = nn.Linear(rho_size, num_topics, bias=False)#nn.Parameter(torch.randn(rho_size, num_topics))
-    
+
         ## define variational distribution for \theta_{1:D} via amortizartion
         self.q_theta = nn.Sequential(
-                nn.Linear(vocab_size, t_hidden_size), 
+                nn.Linear(vocab_size, t_hidden_size),
                 self.theta_act,
                 nn.Linear(t_hidden_size, t_hidden_size),
                 self.theta_act,
@@ -64,13 +64,13 @@ class ETM(nn.Module):
         else:
             print('Defaulting to tanh activations...')
             act = nn.Tanh()
-        return act 
+        return act
 
     def reparameterize(self, mu, logvar):
         """Returns a sample from a Gaussian distribution via reparameterization.
         """
         if self.training:
-            std = torch.exp(0.5 * logvar) 
+            std = torch.exp(0.5 * logvar)
             eps = torch.randn_like(std)
             return eps.mul_(std).add_(mu)
         else:
@@ -102,13 +102,13 @@ class ETM(nn.Module):
     def get_theta(self, normalized_bows):
         mu_theta, logsigma_theta, kld_theta = self.encode(normalized_bows)
         z = self.reparameterize(mu_theta, logsigma_theta)
-        theta = F.softmax(z, dim=-1) 
+        theta = F.softmax(z, dim=-1)
         return theta, kld_theta
 
     def decode(self, theta, beta):
         res = torch.mm(theta, beta)
         preds = torch.log(res+1e-6)
-        return preds 
+        return preds
 
     def forward(self, bows, normalized_bows, theta=None, aggregate=True):
         ## get \theta
@@ -126,4 +126,3 @@ class ETM(nn.Module):
         if aggregate:
             recon_loss = recon_loss.mean()
         return recon_loss, kld_theta
-

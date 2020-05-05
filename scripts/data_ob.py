@@ -7,14 +7,20 @@ from scipy import sparse
 import itertools
 from scipy.io import savemat, loadmat
 corpus_dir = sys.argv[1]
-# Maximum / minimum document frequency
-max_df = 1.0
-min_df = 0  # choose desired value for min_df
+if len(sys.argv) >= 4:
+    max_df = float(sys.argv[2])
+    min_df = int(sys.argv[3])
+else:
+    # Maximum / minimum document frequency
+    max_df = 1.0
+    min_df = 0  # choose desired value for min_df
+
+print("Using min_df:", min_df, "; max_df:", max_df)
 
 # Read stopwords
-with open('stops.txt', 'r') as f:
-    stops = f.read().split('\n')
-
+# with open('stops.txt', 'r') as f:
+#     stops = f.read().split('\n')
+stops = []
 # Read data
 print('reading text files...')
 files = [os.path.join(corpus_dir, f) for f in os.listdir(corpus_dir)
@@ -177,7 +183,7 @@ del doc_indices_ts_h2
 del doc_indices_va
 
 # Save vocabulary to file
-path_save = os.path.join("./", os.path.basename(corpus_dir), 'min_df_' + str(min_df) + "_max_df_" + str(max_df) + '/')
+path_save = os.path.join("./", os.path.basename(corpus_dir), 'min_df_' + str(min_df) + "_max_df_" + str(max_df) + 'no_stop/')
 if not os.path.isdir(path_save):
     os.system('mkdir -p ' + path_save)
 

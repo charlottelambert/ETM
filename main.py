@@ -28,7 +28,7 @@ parser.add_argument('--data_path', type=str, default='data/20ng', help='director
 parser.add_argument('--emb_path', type=str, default='data/20ng_embeddings.txt', help='directory containing word embeddings')
 parser.add_argument('--save_path', type=str, default='./results', help='path to save results')
 parser.add_argument('--batch_size', type=int, default=1000, help='input batch size for training')
-parser.add_argument('--write_neighbors', type=str, default="", help='path to output final topics')
+parser.add_argument('--write_neighbors', type=int, default=0, help='path to output final topics')
 
 ### model-related arguments
 parser.add_argument('--num_topics', type=int, default=50, help='number of topics')
@@ -41,7 +41,7 @@ parser.add_argument('--train_embeddings', type=int, default=0, help='whether to 
 ### optimization-related arguments
 parser.add_argument('--lr', type=float, default=0.005, help='learning rate')
 parser.add_argument('--lr_factor', type=float, default=4.0, help='divide learning rate by this...')
-parser.add_argument('--epochs', type=int, default=20, help='number of epochs to train...150 for 20ng 100 for others')
+parser.add_argument('--epochs', type=int, default=100, help='number of epochs to train...150 for 20ng 100 for others')
 parser.add_argument('--mode', type=str, default='train', help='train or eval model')
 parser.add_argument('--optimizer', type=str, default='adam', help='choice of optimizer')
 parser.add_argument('--seed', type=int, default=2019, help='random seed (default: 1)')
@@ -132,10 +132,12 @@ if not os.path.exists(args.save_path):
 if args.mode == 'eval':
     ckpt = args.load_from
 else:
-    ckpt = os.path.join(args.save_path,
+    ckpt = os.path.join(args.save_path, os.path.basename(os.path.dirname(args.data_path)),
         'etm_{}_K_{}_Htheta_{}_Optim_{}_Clip_{}_ThetaAct_{}_Lr_{}_Bsz_{}_RhoSize_{}_trainEmbeddings_{}'.format(
         args.dataset, args.num_topics, args.t_hidden_size, args.optimizer, args.clip, args.theta_act,
             args.lr, args.batch_size, args.rho_size, args.train_embeddings))
+    if not os.path.exists(os.path.dirname(ckpt)):
+        os.makedirs(os.path.dirname(ckpt))
 
 ## define model and optimizer
 model = ETM(args.num_topics, vocab_size, args.t_hidden_size, args.rho_size, args.emb_size,
@@ -241,7 +243,7 @@ def visualize(m, show_emb=True):
                     print('word: {} .. neighbors: {}'.format(
                         word, nearest_neighbors(word, embeddings, vocab)))
                 except ValueError:
-                    print( word + " not in queries. Skipping...", file=sys.stderr)
+                    print( word + " not in queries. Skipping...")
                     continue
             print('#'*100)
 
@@ -297,7 +299,7 @@ def evaluate(m, source, tc=False, td=False):
             beta = beta.data.cpu().numpy()
             if tc:
                 print('Computing topic coherence...')
-                get_topic_coherence(beta, train_tokens, vocab)
+                # get_topic_coherence(beta, train_tokens, vocab)
             if td:
                 print('Computing topic diversity...')
                 get_topic_diversity(beta, 25)
@@ -406,12 +408,14 @@ else:
                     print(print_str)
                     to_write.append(print_str)
                 except ValueError:
-                    print_str = word + "not in queries. Skipping..."
-                    print(print_str, file=sys.stderr)
+                    print_str = word + " not in queries. Skipping..."
+                    print(print_str)
                     to_write.append(print_str)
                     continue
             print('\n')
 
     if args.write_neighbors:
-        with open(args.write_neighbors, "w") as f:
+        out_path = os.path.join(args.save_path, os.path.basename(os.path.dirname(args.data_path)), args.dataset + "_topics_and_neighbors.txt")
+        with open(out_path, "w") as f:
             f.write("\n".join(to_write))
+        print("Results written to:", out_path)
