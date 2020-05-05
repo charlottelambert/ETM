@@ -1,5 +1,8 @@
 # ETM
 
+
+note: if using TSV files, might need a text version of tsv file. This code won't do it. Need code from D-ETM repository [here](https://github.com/charlottelambert/DETM).
+
 This is code that accompanies the paper titled "Topic Modeling in Embedding Spaces" by Adji B. Dieng, Francisco J. R. Ruiz, and David M. Blei. (Arxiv link: https://arxiv.org/abs/1907.04907)
 
 ETM defines words and topics in the same embedding space. The likelihood of a word under ETM is a Categorical whose natural parameter is given by the dot product between the word embedding and its assigned topic's embedding. ETM is a document model that learns interpretable topics and word embeddings and is robust to large vocabularies that include rare words and stop words.
