@@ -18,21 +18,46 @@ else:
 print("Using min_df:", min_df, "; max_df:", max_df)
 
 # Read stopwords
-# with open('stops.txt', 'r') as f:
-#     stops = f.read().split('\n')
+with open('stops.txt', 'r') as f:
+    stops = f.read().split('\n')
 stops = []
 # Read data
-print('reading text files...')
-files = [os.path.join(corpus_dir, f) for f in os.listdir(corpus_dir)
+if os.path.isfile(corpus_dir):
+    corpus_file = corpus_dir
+    # Read raw data
+    print("Reading raw data...")
+    with open(corpus_file) as csv_file:
+        line_count = -1
+        docs = []
+        for line in csv_file:
+            line_count += 1
+            if line_count == 0:
+                continue
+            try:
+                file_id, date, text = line.strip().split("\t")
+            except:
+                print("Problem splitting line:", line, file=sys.stderr)
+                sys.exit()
+            docs.append(text)
+    print("Number of documents:", line_count)
+    # Write as raw text (will be input to skipgram)
+    out_filename = corpus_file + "-proc"
+    print("Writing to text file...")
+    with open(out_filename, "w") as f:
+        for line in docs:
+            f.write(line + "\n")
+else:
+    print('reading text files...')
+    files = [os.path.join(corpus_dir, f) for f in os.listdir(corpus_dir)
              if (os.path.isfile(os.path.join(corpus_dir, f))
                  and re.match(".*[0-9]{8}", f) and f.endswith('.txt'))]
 
-print("Number of files:", len(files))
+    print("Number of documents:", len(files))
 
-docs = []
-for file in files:
-    with open(file, "r") as f:
-        docs.append(f.read())
+    docs = []
+    for file in files:
+        with open(file, "r") as f:
+            docs.append(f.read())
 
 # Create count vectorizer
 print('counting document frequency of words...')

@@ -8,6 +8,18 @@ note: if using TSV files, might need a text version of tsv file. This code won't
 
 All the following steps are intended to be run on the TSV data representation of the Proceedings of Old Bailey. Go [here](https://github.com/charlottelambert/thesis/data) to see information about obtaining this data.
 
+### Data
+
+This code is able to process data in TSV form and in the form of a directory containing text documents. It is recommended that you stick with TSV data, however, for `./data_ob.py`, you can replace the `TSV_CORPUS` input with a directory of text documents if you wish.
+
+```
+./data_ob.py TSV_CORPUS [MAX_DF] [MIN_DF]
+```
+
+The two two options after `TSV_CORPUS` indicate thresholds for filtering the corpus vocabulary. The `MAX_DF` parameter is between 0 and 1 and indicates the maximum proportion of documents a word can be in to be included in the vocabulary. The `MIN_DF` argument is between 0 and the number of documents in the corpus and indicates the number of documents in which a word must be present to be included in the vocabulary. This code outputs several files to a directory named `scripts/TSV_CORPUS/min_df_MIN_DF_max_df_MAX_DF`. It will also write a file `TSV_CORPUS-proc` to the same location as `TSV_CORPUS` which is a text representation of the corpus. This is needed as input to `skipgram.py` in the next step.
+
+### Embeddings
+
 First, generate an embeddings file from the TSV corpus. The `TSV_CORPUS` input should be just the name of the tsv file, e.g., `sessionsAndOrdinarys-txt-tok.tsv`, not the full path. Include the full path in the `--data_file` argument.
 ```
 data_path=TSV_CORPUS
@@ -18,6 +30,8 @@ CUDA_DEVICES=3 python3 skipgram.py \
 ```
 
 This will save an embedding file to `data/$data_path-embed` which will be used as input in the following step.
+
+### Train ETM
 
 Next, using the same `TSV_CORPUS`, run the following commands:
 
@@ -34,9 +48,9 @@ mkdir -p results/$data_path
 CUDA_VISIBLE_DEVICES=0 python3 main.py \
     --mode train \
     --dataset ob  \
-    --data_path ~/detm/scripts/$data_path/min_df_$min_df\_max_df_$max_df\ \
+    --data_path scripts/$data_path/min_df_$min_df\_max_df_$max_df \
     --num_topics $num_topics \
-    --emb_path ~/detm/data/$data_path-embed \
+    --emb_path data/$data_path-embed \
     --epochs $epochs \
     --emb_size 100 \
     --rho_size 100 \
