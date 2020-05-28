@@ -1,12 +1,12 @@
 # ETM
 
-This repository is a fork of code accompanying the paper titled "Topic Modeling in Embedding Spaces" by Adji B. Dieng, Francisco J. R. Ruiz, and David M. Blei. (Arxiv link: https://arxiv.org/abs/1907.04907). The code is adapted to work with the Proceedings of Old Bailey in [this](https://github.com/charlottelambert/thesis) project.
+This repository is a fork of code accompanying the paper titled "Topic Modeling in Embedding Spaces" by Adji B. Dieng, Francisco J. R. Ruiz, and David M. Blei. (Arxiv link: https://arxiv.org/abs/1907.04907). The code is adapted to work with the Proceedings of Old Bailey in [this](https://github.com/charlottelambert/old-bailey) project.
 
 note: if using TSV files, might need a text version of tsv file. This code won't do it. Need code from D-ETM repository [here](https://github.com/charlottelambert/DETM). See the `README.md` for instructions on generating a TSV file of the data.
 
 ## Steps to run
 
-All the following steps are intended to be run on the TSV data representation of the Proceedings of Old Bailey. Go [here](https://github.com/charlottelambert/thesis/data) to see information about obtaining this data.
+All the following steps are intended to be run on the TSV data representation of the Proceedings of Old Bailey. Go [here](https://github.com/charlottelambert/old-bailey/data) to see information about obtaining this data.
 
 ### Data
 
